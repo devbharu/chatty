@@ -8,7 +8,7 @@ import userResponse from "./utils/api.response.js";
 import connectDb from "./utils/connectDB.js";
 import messagesRoutes from "./routes/messagesRoutes.js";
 import chatsRoutes from "./routes/chatsRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
+
 import { realTimeChat } from "./ws/realtimechat.js";
 
 
