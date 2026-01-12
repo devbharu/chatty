@@ -1,20 +1,29 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, Navigate } from "react-router-dom";
+
+
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import SignUp from "./pages/SignUp";
+import Home from "./pages/Home";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const isAuthenticated = true;
 
   return (
-    <>
-      <div className='h-screen w-screen bg-blue-200'>
-        <h1 className='text-4xl'>
-          chatty
-        </h1>
-      </div>
-    </>
-  )
+
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+
+      {/* Protected Route */}
+      <Route
+        path="/home/*"
+        element={isAuthenticated ? <Home /> : <Navigate to="/login" />}
+      />
+    </Routes>
+
+  );
 }
 
-export default App
+export default App;
