@@ -3,99 +3,85 @@ import { User } from "../models/user.js";
 import userResponse from "../utils/api.response.js";
 import upload from "../utils/multer.js";
 import cloudinary from "../utils/cloudinary.js";
-
+import { isAuthenticated } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/createUser", async (req, res) => {
+
+router.post("/createUser", async (req, res, next) => {
     try {
         const { name, email, avatar } = req.body;
 
-        const data = await User.create({
-            name: name,
-            email: email,
-            avatar: avatar
-        })
+        const data = await User.create({ name, email, avatar });
 
-        userResponse(res, 200, true, "user  created", data)
+        userResponse(res, 201, true, "User created", data);
     } catch (err) {
-        next(err)
-    }
-
-
-});
-
-
-router.get("/getUsers", async (req, res) => {
-    try {
-
-
-        const data = await User.find({
-
-        }).select("name email")
-
-        userResponse(res, 200, true, "all  users", data)
-    } catch (err) {
-
         next(err);
     }
-
-
 });
 
+
+router.get("/getUsers", isAuthenticated, async (req, res, next) => {
+    try {
+        const users = await User.find()
+            .select("name avatar");
+
+        userResponse(res, 200, true, "All users", users);
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+router.get("/me", isAuthenticated, async (req, res, next) => {
+    try {
+        const user = await User.findById(req.session.userId)
+            .select("name email avatar");
+
+        if (!user) {
+            return userResponse(res, 404, false, "User not found");
+        }
+
+        userResponse(res, 200, true, "Current user", user);
+    } catch (err) {
+        next(err);
+    }
+});
 
 
 router.post(
-    "/users/:userId/avatar",
+    "/me/avatar",
+    isAuthenticated,
     upload.single("file"),
-    async (req, res) => {
+    async (req, res, next) => {
         try {
-            const { userId } = req.params;
             const file = req.file;
 
             if (!file) {
-                return res.status(400).json({ message: "No file uploaded" });
+                return userResponse(res, 400, false, "No file uploaded");
             }
 
-            // Upload to Cloudinary
-            cloudinary.uploader
-                .upload_stream(
-                    {
-                        folder: "user_avatars",
-                    },
-                    async (error, result) => {
-                        if (error) {
-                            return res.status(500).json({ message: "Cloudinary upload failed" });
-                        }
-
-                        // Save avatar URL in User document
-                        const user = await User.findByIdAndUpdate(
-                            userId,
-                            { avatar: result.secure_url },
-                            { new: true }
-                        );
-
-                        if (!user) {
-                            return res.status(404).json({ message: "User not found" });
-                        }
-
-                        res.status(200).json({
-                            message: "Avatar updated successfully",
-                            avatar: user.avatar,
-                            user,
-                        });
+            cloudinary.uploader.upload_stream(
+                { folder: "user_avatars" },
+                async (error, result) => {
+                    if (error) {
+                        return userResponse(res, 500, false, "Cloudinary upload failed");
                     }
-                )
-                .end(file.buffer);
+
+                    const user = await User.findByIdAndUpdate(
+                        req.session.userId,
+                        { avatar: result.secure_url },
+                        { new: true }
+                    ).select("name email avatar");
+
+                    userResponse(res, 200, true, "Avatar updated", user);
+                }
+            ).end(file.buffer);
 
         } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: "Upload failed" });
+            next(err);
         }
     }
 );
-
-
-
 
 export default router;

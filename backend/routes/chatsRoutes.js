@@ -1,71 +1,87 @@
 import express from "express";
-
 import Chat from "../models/chat.js";
 import userResponse from "../utils/api.response.js";
+import { isAuthenticated } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/chats/single", async (req, res) => {
+
+router.post("/chats/single", isAuthenticated, async (req, res, next) => {
     try {
-        const { usr1, usr2 } = req.body
+        const { otherUserId } = req.body;
+        const userId = req.session.userId;
 
-        const chatData = await Chat.create({
+        if (!otherUserId) {
+            return userResponse(res, 400, false, "Other user ID is required");
+        }
+
+
+        let chat = await Chat.findOne({
             isGroupChat: false,
-            users: [usr1, usr2]
+            users: { $all: [userId, otherUserId] },
         })
+            .populate("users", "name email avatar")
+            .populate("lastMessage");
 
+        if (!chat) {
+            chat = await Chat.create({
+                isGroupChat: false,
+                users: [userId, otherUserId],
+            });
+            await chat.populate("users", "name email avatar");
+        }
 
-        userResponse(res, 200, true, "chat of the users", chatData)
+        userResponse(res, 200, true, "Single chat fetched/created", chat);
     } catch (err) {
         next(err);
     }
+});
 
 
-})
-
-router.post("/chats/group", async (req, res) => {
+router.post("/chats/group", isAuthenticated, async (req, res, next) => {
     try {
-        const { name, users } = req.body
+        const { name, users } = req.body;
+        const creatorId = req.session.userId;
+
+        if (!name || !users || users.length < 1) {
+            return userResponse(res, 400, false, "Group name and users required");
+        }
+
+        const groupUsers = [creatorId, ...users];
 
         const groupChat = await Chat.create({
             isGroupChat: true,
             chatName: name,
-            users: users
-        })
+            users: groupUsers,
+        });
 
-        userResponse(res, 200, true, "chat of the users", groupChat)
+        await groupChat.populate("users", "name email avatar");
 
+        userResponse(res, 200, true, "Group chat created", groupChat);
     } catch (err) {
         next(err);
     }
+});
 
 
-})
-
-
-router.get("/chats/:userId", async (req, res) => {
-
+router.get("/chats", isAuthenticated, async (req, res, next) => {
     try {
-        const id = req.params.userId
+        const userId = req.session.userId;
 
-        const data = await Chat.find({
-            users: id
+        const chats = await Chat.find({
+            users: userId,
         })
-            .populate("users")
-            .populate("lastMessage");
-        if (!data) {
-            res.json({
-                message: "no data"
+            .populate("users", "name email avatar")
+            .populate({
+                path: "lastMessage",
+                populate: { path: "sender", select: "name email avatar" },
             })
-        }
+            .sort({ updatedAt: -1 });
 
-        userResponse(res, 200, true, "chat of the users", data)
+        userResponse(res, 200, true, "Chats fetched", chats);
     } catch (err) {
-
         next(err);
     }
-
-})
-
+});
 
 export default router;
