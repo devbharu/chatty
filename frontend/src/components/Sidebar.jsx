@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-export default function Sidebar({ selectedChat, setSelectedChat }) {
+// Sidebar Component
+export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setShowChat }) {
     const [searchQuery, setSearchQuery] = useState('');
+    const [showModal, setShowModal] = useState(false);
+    const [modalType, setModalType] = useState(null);
+    const [searchUsers, setSearchUsers] = useState('');
+    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [groupName, setGroupName] = useState('');
 
     const chats = [
         {
@@ -51,94 +57,301 @@ export default function Sidebar({ selectedChat, setSelectedChat }) {
         },
     ];
 
+    const availableUsers = [
+        { id: 6, name: "John Doe", avatar: "JD" },
+        { id: 7, name: "Emma Wilson", avatar: "EW" },
+        { id: 8, name: "Michael Brown", avatar: "MB" },
+        { id: 9, name: "Lisa Anderson", avatar: "LA" },
+        { id: 10, name: "David Lee", avatar: "DL" },
+        { id: 11, name: "Sophie Taylor", avatar: "ST" },
+    ];
+
     const filteredChats = chats.filter(chat =>
         chat.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    return (
-        <div className="w-full md:w-96 bg-[#111b21] flex flex-col h-screen">
-            {/* Header */}
-            <div className="bg-[#202c33] p-4 flex items-center justify-between">
-                <h2 className="font-semibold text-base text-[#e9edef]">Chats</h2>
-                <div className="flex gap-5">
-                    <button className="text-[#aebac1] hover:text-white transition-colors">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19.005 3.175H4.674C3.642 3.175 3 3.789 3 4.821V21.02l3.544-3.514h12.461c1.033 0 2.064-1.06 2.064-2.093V4.821c-.001-1.032-1.032-1.646-2.064-1.646zm-4.989 9.869H7.041V11.1h6.975v1.944zm3-4H7.041V7.1h9.975v1.944z" />
-                        </svg>
-                    </button>
-                    <button className="text-[#aebac1] hover:text-white transition-colors">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 7a2 2 0 1 0-.001-4.001A2 2 0 0 0 12 7zm0 2a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 9zm0 6a2 2 0 1 0-.001 3.999A2 2 0 0 0 12 15z" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
+    const filteredUsers = availableUsers.filter(user =>
+        user.name.toLowerCase().includes(searchUsers.toLowerCase())
+    );
 
-            {/* Search Bar */}
-            <div className="px-3 py-2 bg-[#111b21]">
+    const openModal = (type) => {
+        setModalType(type);
+        setShowModal(true);
+        setSearchUsers('');
+        setSelectedUsers([]);
+        setGroupName('');
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setModalType(null);
+        setSearchUsers('');
+        setSelectedUsers([]);
+        setGroupName('');
+    };
+
+    const toggleUserSelection = (user) => {
+        if (selectedUsers.find(u => u.id === user.id)) {
+            setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
+        } else {
+            setSelectedUsers([...selectedUsers, user]);
+        }
+    };
+
+    const handleCreateChat = () => {
+        if (selectedUsers.length === 1) {
+            console.log('Creating chat with:', selectedUsers[0]);
+            closeModal();
+        }
+    };
+
+    const handleCreateGroup = () => {
+        if (selectedUsers.length >= 2 && groupName.trim()) {
+            console.log('Creating group:', groupName, 'with users:', selectedUsers);
+            closeModal();
+        }
+    };
+
+    const handleChatSelect = (chat) => {
+        setSelectedChat(chat);
+        if (onMobile) {
+            setShowChat(true);
+        }
+    };
+
+    return (
+        <div className="w-full md:w-96 bg-[#111b21] flex flex-col h-screen relative">
+            {/* Header */}
+            <div className="bg-[#202c33] p-4 md:p-6 border-b border-[#2a3942]/50">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <h2 className="font-bold text-xl md:text-2xl text-[#e9edef]">ChatFlow</h2>
+                    <div className="flex gap-2 md:gap-3">
+                        <button
+                            onClick={() => setShowModal(!showModal)}
+                            className="text-[#aebac1] hover:text-[#56B9FE] transition-all duration-200 hover:scale-110 p-1"
+                        >
+                            <i className="ri-add-line text-xl md:text-2xl"></i>
+                        </button>
+                        <button className="text-[#aebac1] hover:text-[#56B9FE] transition-all duration-200 hover:scale-110 p-1">
+                            <i className="ri-more-2-fill text-xl md:text-2xl"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <div className="relative">
-                    <svg className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#8696a0]" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M15.009 13.805h-.636l-.22-.219a5.184 5.184 0 0 0 1.256-3.386 5.207 5.207 0 1 0-5.207 5.208 5.183 5.183 0 0 0 3.385-1.255l.221.22v.635l4.004 3.999 1.194-1.195-3.997-4.007zm-4.808 0a3.605 3.605 0 1 1 0-7.21 3.605 3.605 0 0 1 0 7.21z" />
-                    </svg>
+                    <i className="ri-search-line absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-[#8696a0] text-lg md:text-xl"></i>
                     <input
                         type="text"
-                        placeholder="Search or start new chat"
+                        placeholder="Search conversations..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-14 pr-4 py-2 bg-[#202c33] text-[#e9edef] rounded-lg border-none outline-none placeholder-[#8696a0]"
+                        className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3 text-sm md:text-base bg-[#202c33] text-[#e9edef] rounded-xl border border-[#2a3942] outline-none placeholder-[#8696a0] focus:border-[#56B9FE] transition-all duration-200"
                     />
                 </div>
             </div>
 
+            {/* Selection Modal */}
+            {showModal && !modalType && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40"
+                        onClick={closeModal}
+                    ></div>
+
+                    <div className="absolute top-16 md:top-20 right-4 md:right-6 z-50 bg-[#202c33] rounded-xl shadow-2xl w-56 md:w-64 overflow-hidden border border-[#2a3942]">
+                        <div className="py-2">
+                            <button
+                                onClick={() => openModal('chat')}
+                                className="w-full px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-3 md:gap-4 hover:bg-[#111b21] transition-colors text-[#e9edef]"
+                            >
+                                <div className="w-9 h-9 md:w-10 md:h-10 bg-[#56B9FE] rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="ri-user-add-line text-lg md:text-xl text-white"></i>
+                                </div>
+                                <span className="font-medium text-sm md:text-base">New Chat</span>
+                            </button>
+
+                            <button
+                                onClick={() => openModal('group')}
+                                className="w-full px-3 md:px-4 py-2.5 md:py-3 flex items-center gap-3 md:gap-4 hover:bg-[#111b21] transition-colors text-[#e9edef]"
+                            >
+                                <div className="w-9 h-9 md:w-10 md:h-10 bg-[#56B9FE] rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i className="ri-group-line text-lg md:text-xl text-white"></i>
+                                </div>
+                                <span className="font-medium text-sm md:text-base">New Group</span>
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* New Chat/Group Modal */}
+            {showModal && modalType && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/70 z-40"
+                        onClick={closeModal}
+                    ></div>
+
+                    <div className="fixed inset-4 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:inset-auto z-50 bg-[#202c33] rounded-2xl shadow-2xl w-auto md:w-[90%] md:max-w-md max-h-[calc(100vh-2rem)] md:max-h-[80vh] flex flex-col border border-[#2a3942]">
+                        <div className="p-4 md:p-6 border-b border-[#2a3942]">
+                            <div className="flex items-center justify-between mb-3 md:mb-4">
+                                <h3 className="text-lg md:text-xl font-bold text-[#e9edef]">
+                                    {modalType === 'chat' ? 'New Chat' : 'New Group'}
+                                </h3>
+                                <button
+                                    onClick={closeModal}
+                                    className="text-[#8696a0] hover:text-[#e9edef] transition-colors p-1"
+                                >
+                                    <i className="ri-close-line text-xl md:text-2xl"></i>
+                                </button>
+                            </div>
+
+                            {modalType === 'group' && (
+                                <input
+                                    type="text"
+                                    placeholder="Group name"
+                                    value={groupName}
+                                    onChange={(e) => setGroupName(e.target.value)}
+                                    className="w-full px-3 md:px-4 py-2.5 md:py-3 text-sm md:text-base bg-[#111b21] text-[#e9edef] rounded-xl border border-[#2a3942] outline-none placeholder-[#8696a0] focus:border-[#56B9FE] transition-all mb-3 md:mb-4"
+                                />
+                            )}
+
+                            <div className="relative">
+                                <i className="ri-search-line absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-[#8696a0] text-lg md:text-xl"></i>
+                                <input
+                                    type="text"
+                                    placeholder="Search users..."
+                                    value={searchUsers}
+                                    onChange={(e) => setSearchUsers(e.target.value)}
+                                    className="w-full pl-10 md:pl-12 pr-3 md:pr-4 py-2.5 md:py-3 text-sm md:text-base bg-[#111b21] text-[#e9edef] rounded-xl border border-[#2a3942] outline-none placeholder-[#8696a0] focus:border-[#56B9FE] transition-all"
+                                />
+                            </div>
+
+                            {modalType === 'group' && selectedUsers.length > 0 && (
+                                <div className="mt-3 md:mt-4 flex flex-wrap gap-2">
+                                    {selectedUsers.map(user => (
+                                        <div
+                                            key={user.id}
+                                            className="bg-[#56B9FE] text-white px-2.5 md:px-3 py-1 rounded-full text-xs md:text-sm flex items-center gap-1.5 md:gap-2"
+                                        >
+                                            <span>{user.name}</span>
+                                            <button
+                                                onClick={() => toggleUserSelection(user)}
+                                                className="hover:bg-white/20 rounded-full"
+                                            >
+                                                <i className="ri-close-line text-sm md:text-base"></i>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 md:p-4">
+                            {filteredUsers.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-[#8696a0]">
+                                    <i className="ri-user-search-line text-4xl md:text-5xl mb-2 md:mb-3"></i>
+                                    <p className="text-xs md:text-sm">No users found</p>
+                                </div>
+                            ) : (
+                                filteredUsers.map((user) => (
+                                    <div
+                                        key={user.id}
+                                        onClick={() => {
+                                            if (modalType === 'chat') {
+                                                setSelectedUsers([user]);
+                                                handleCreateChat();
+                                            } else {
+                                                toggleUserSelection(user);
+                                            }
+                                        }}
+                                        className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 rounded-xl cursor-pointer transition-all hover:bg-[#111b21] ${selectedUsers.find(u => u.id === user.id) ? 'bg-[#111b21] border-2 border-[#56B9FE]' : ''
+                                            }`}
+                                    >
+                                        <div className="w-10 h-10 md:w-12 md:h-12 bg-[#6b7c85] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm md:text-base">
+                                            {user.avatar}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-[#e9edef] font-medium text-sm md:text-base truncate">{user.name}</h4>
+                                        </div>
+                                        {modalType === 'group' && selectedUsers.find(u => u.id === user.id) && (
+                                            <i className="ri-checkbox-circle-fill text-[#56B9FE] text-xl md:text-2xl flex-shrink-0"></i>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {modalType === 'group' && (
+                            <div className="p-3 md:p-4 border-t border-[#2a3942]">
+                                <button
+                                    onClick={handleCreateGroup}
+                                    disabled={selectedUsers.length < 2 || !groupName.trim()}
+                                    className={`w-full py-2.5 md:py-3 rounded-xl font-medium text-sm md:text-base transition-all ${selectedUsers.length >= 2 && groupName.trim()
+                                        ? 'bg-[#56B9FE] text-white hover:bg-[#3ea4e8]'
+                                        : 'bg-[#2a3942] text-[#8696a0] cursor-not-allowed'
+                                        }`}
+                                >
+                                    Create Group ({selectedUsers.length} selected)
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
+
             {/* Chats List */}
-            <div className="flex-1 overflow-y-auto bg-[#111b21]">
+            <div className="flex-1 overflow-y-auto px-2 md:px-3 py-2 bg-[#111b21]">
                 {filteredChats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-[#8696a0]">
-                        <svg className="w-16 h-16 mb-4" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M19.005 3.175H4.674C3.642 3.175 3 3.789 3 4.821V21.02l3.544-3.514h12.461c1.033 0 2.064-1.06 2.064-2.093V4.821c-.001-1.032-1.032-1.646-2.064-1.646z" />
-                        </svg>
-                        <p className="text-sm">No chats found</p>
+                        <div className="bg-[#202c33] rounded-full p-4 md:p-6 mb-3 md:mb-4">
+                            <i className="ri-message-3-line text-4xl md:text-5xl"></i>
+                        </div>
+                        <p className="text-xs md:text-sm font-medium">No conversations found</p>
+                        <p className="text-[10px] md:text-xs text-[#667781] mt-1">Try a different search term</p>
                     </div>
                 ) : (
                     filteredChats.map((chat) => (
                         <div
                             key={chat.id}
-                            onClick={() => setSelectedChat(chat)}
-                            className={`flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#202c33] transition-colors border-b border-[#202c33] ${selectedChat?.id === chat.id ? "bg-[#2a3942]" : ""
+                            onClick={() => handleChatSelect(chat)}
+                            className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 my-1 cursor-pointer rounded-xl md:rounded-2xl transition-all duration-200 hover:bg-[#202c33] group ${selectedChat?.id === chat.id
+                                ? "bg-[#202c33]"
+                                : ""
                                 }`}
                         >
-                            {/* Avatar */}
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium flex-shrink-0 ${chat.type === "group" ? "bg-[#4848ff]" : "bg-[#6b7c85]"
-                                }`}>
-                                {chat.type === "group" ? (
-                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M17.5 12.068c1.378 0 2.5-1.122 2.5-2.5S18.878 7.068 17.5 7.068s-2.5 1.122-2.5 2.5 1.122 2.5 2.5 2.5zm-11 0c1.378 0 2.5-1.122 2.5-2.5S7.878 7.068 6.5 7.068s-2.5 1.122-2.5 2.5 1.122 2.5 2.5 2.5zm0 2c-2.067 0-6.2.833-6.2 2.5v1.932h12.4v-1.932c0-1.667-4.133-2.5-6.2-2.5zm11 0c-.26 0-.557.017-.883.05.883.717 1.483 1.65 1.483 2.45v1.932h5.6v-1.932c0-1.667-4.133-2.5-6.2-2.5z" />
-                                    </svg>
-                                ) : (
-                                    <span className="text-base">{chat.avatar}</span>
+                            <div className="relative">
+                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg transition-all duration-200 group-hover:scale-105 ${chat.type === "group"
+                                    ? "bg-[#56B9FE]"
+                                    : "bg-[#6b7c85]"
+                                    }`}>
+                                    {chat.type === "group" ? (
+                                        <i className="ri-group-line text-xl md:text-2xl"></i>
+                                    ) : (
+                                        <span className="text-base md:text-lg">{chat.avatar}</span>
+                                    )}
+                                </div>
+                                {chat.unread > 0 && (
+                                    <div className="absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 bg-[#56B9FE] rounded-full flex items-center justify-center text-white text-[10px] md:text-xs font-bold border-2 border-[#111b21] shadow-lg">
+                                        {chat.unread}
+                                    </div>
                                 )}
                             </div>
 
-                            {/* Chat Info */}
                             <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-normal text-[#e9edef] truncate text-base">
+                                <div className="flex justify-between items-start mb-0.5 md:mb-1">
+                                    <h3 className={`font-semibold truncate text-sm md:text-base transition-colors ${selectedChat?.id === chat.id ? "text-[#e9edef]" : "text-[#e9edef] group-hover:text-white"
+                                        }`}>
                                         {chat.name}
                                     </h3>
-                                    <span className="text-xs text-[#8696a0] flex-shrink-0 ml-2">
+                                    <span className="text-[10px] md:text-xs text-[#8696a0] flex-shrink-0 ml-2 font-medium">
                                         {chat.time}
                                     </span>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <p className="text-sm text-[#8696a0] truncate">
-                                        {chat.lastMessage}
-                                    </p>
-                                    {chat.unread > 0 && (
-                                        <span className="bg-[#4848ff] text-white text-xs font-semibold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 flex-shrink-0 ml-2">
-                                            {chat.unread}
-                                        </span>
-                                    )}
-                                </div>
+                                <p className={`text-xs md:text-sm truncate transition-colors ${chat.unread > 0 ? "text-[#d1d7db] font-medium" : "text-[#8696a0]"
+                                    }`}>
+                                    {chat.lastMessage}
+                                </p>
                             </div>
                         </div>
                     ))
