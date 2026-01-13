@@ -27,7 +27,13 @@ connectDb();
 
 app.use(express.json());
 
-app.use(cors());
+app.use(
+    cors({
+        origin: "http://localhost:5173",
+        credentials: true, // needed if you use cookies / auth
+    })
+);
+
 console.log(process.env.SESSION_SECRET)
 
 const sessionMiddleware = session({

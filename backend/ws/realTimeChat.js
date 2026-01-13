@@ -45,8 +45,6 @@ export function realTimeChat(wss, sessionMiddleware) {
 
                 if (data.type === "chat") {
                     const { chatId, content, mediaUrl } = data.payload;
-
-
                     const senderId = socket.userId;
 
                     const newMessage = await Message.create({
@@ -55,6 +53,9 @@ export function realTimeChat(wss, sessionMiddleware) {
                         content,
                         mediaUrl,
                     });
+
+                    // Populate sender info before broadcasting
+                    await newMessage.populate('sender', 'name  avatar');
 
                     await Chat.findByIdAndUpdate(chatId, {
                         lastMessage: newMessage._id,

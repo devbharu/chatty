@@ -5,7 +5,6 @@ import { isAuthenticated } from "../middleware/auth.js";
 
 const router = express.Router();
 
-
 router.post("/chats/single", isAuthenticated, async (req, res, next) => {
     try {
         const { otherUserId } = req.body;
@@ -15,7 +14,6 @@ router.post("/chats/single", isAuthenticated, async (req, res, next) => {
             return userResponse(res, 400, false, "Other user ID is required");
         }
 
-
         let chat = await Chat.findOne({
             isGroupChat: false,
             users: { $all: [userId, otherUserId] },
@@ -24,11 +22,17 @@ router.post("/chats/single", isAuthenticated, async (req, res, next) => {
             .populate("lastMessage");
 
         if (!chat) {
+            // IMPORTANT: Current user first, then other user
             chat = await Chat.create({
                 isGroupChat: false,
-                users: [userId, otherUserId],
+                users: [userId, otherUserId], // Current user is ALWAYS first
             });
             await chat.populate("users", "name email avatar");
+        }
+
+        // Ensure the response always has current user first
+        if (chat.users[0]._id.toString() !== userId.toString()) {
+            chat.users.reverse(); // Swap if needed
         }
 
         userResponse(res, 200, true, "Single chat fetched/created", chat);
@@ -36,7 +40,6 @@ router.post("/chats/single", isAuthenticated, async (req, res, next) => {
         next(err);
     }
 });
-
 
 router.post("/chats/group", isAuthenticated, async (req, res, next) => {
     try {
