@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { setSelectedChat, createSingleChat, createGroupChat, fetchChats } from "../slices/chatSlice";
 
-// Sidebar Component
-export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setShowChat }) {
+export default function Sidebar({ onMobile, setShowChat }) {
+    const dispatch = useDispatch();
+    const { chats, selectedChat, loading } = useSelector((state) => state.chats);
+    const { allUsers, currentUser } = useSelector((state) => state.users);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState(null);
@@ -9,69 +14,53 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [groupName, setGroupName] = useState('');
 
-    const chats = [
-        {
-            id: 1,
-            name: "Alice Johnson",
-            type: "user",
-            lastMessage: "Hey! How are you doing?",
-            time: "10:30 AM",
-            unread: 2,
-            avatar: "AJ"
-        },
-        {
-            id: 2,
-            name: "Bob Smith",
-            type: "user",
-            lastMessage: "Did you see the latest update?",
-            time: "9:15 AM",
-            unread: 0,
-            avatar: "BS"
-        },
-        {
-            id: 3,
-            name: "Project Team",
-            type: "group",
-            lastMessage: "Meeting at 3 PM today",
-            time: "Yesterday",
-            unread: 5,
-            avatar: "PT"
-        },
-        {
-            id: 4,
-            name: "Sarah Williams",
-            type: "user",
-            lastMessage: "Thanks for your help!",
-            time: "Monday",
-            unread: 0,
-            avatar: "SW"
-        },
-        {
-            id: 5,
-            name: "Design Team",
-            type: "group",
-            lastMessage: "New mockups uploaded",
-            time: "Sunday",
-            unread: 1,
-            avatar: "DT"
-        },
-    ];
+    // Fetch chats when component loads
 
-    const availableUsers = [
-        { id: 6, name: "John Doe", avatar: "JD" },
-        { id: 7, name: "Emma Wilson", avatar: "EW" },
-        { id: 8, name: "Michael Brown", avatar: "MB" },
-        { id: 9, name: "Lisa Anderson", avatar: "LA" },
-        { id: 10, name: "David Lee", avatar: "DL" },
-        { id: 11, name: "Sophie Taylor", avatar: "ST" },
-    ];
+    // Helper function to get the chat display name
+    const getChatName = (chat) => {
+        if (chat.isGroupChat) {
+            return chat.chatName || chat.name || 'Unnamed Group';
+        } else {
+            // For single chats, show the other person's name
+            if (chat.users && Array.isArray(chat.users) && chat.users.length === 2) {
+                const otherUser = chat.users[0]._id === currentUser?._id
+                    ? chat.users[1]
+                    : chat.users[0];
+                return otherUser?.name || 'Unknown User';
+            }
+            return 'Unknown User';
+        }
+    };
 
-    const filteredChats = chats.filter(chat =>
-        chat.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
-    const filteredUsers = availableUsers.filter(user =>
-        user.name.toLowerCase().includes(searchUsers.toLowerCase())
+    const getChatInitial = (chat) => {
+        const name = getChatName(chat);
+        return name.charAt(0).toUpperCase();
+    };
+
+
+    const getLastMessagePreview = (chat) => {
+        if (!chat.lastMessage) {
+            return 'No messages yet';
+        }
+
+
+        if (typeof chat.lastMessage === 'object' && chat.lastMessage.content) {
+            return chat.lastMessage.content;
+        }
+
+        // If lastMessage is just an ID or not populated
+        return 'Tap to view messages';
+    };
+
+    const filteredChats = chats.filter(chat => {
+        const chatName = getChatName(chat);
+        return chatName.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+
+    const filteredUsers = allUsers.filter(user =>
+        user.name?.toLowerCase().includes(searchUsers.toLowerCase()) &&
+        user._id !== currentUser?._id
     );
 
     const openModal = (type) => {
@@ -91,29 +80,36 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
     };
 
     const toggleUserSelection = (user) => {
-        if (selectedUsers.find(u => u.id === user.id)) {
-            setSelectedUsers(selectedUsers.filter(u => u.id !== user.id));
+        if (selectedUsers.find(u => u._id === user._id)) {
+            setSelectedUsers(selectedUsers.filter(u => u._id !== user._id));
         } else {
             setSelectedUsers([...selectedUsers, user]);
         }
     };
 
-    const handleCreateChat = () => {
-        if (selectedUsers.length === 1) {
-            console.log('Creating chat with:', selectedUsers[0]);
+    const handleCreateChat = async (user) => {
+        try {
+            await dispatch(createSingleChat(user._id)).unwrap();
             closeModal();
+        } catch (err) {
+            console.error('Failed to create chat:', err);
         }
     };
 
-    const handleCreateGroup = () => {
+    const handleCreateGroup = async () => {
         if (selectedUsers.length >= 2 && groupName.trim()) {
-            console.log('Creating group:', groupName, 'with users:', selectedUsers);
-            closeModal();
+            try {
+                const userIds = selectedUsers.map(u => u._id);
+                await dispatch(createGroupChat({ name: groupName, users: userIds })).unwrap();
+                closeModal();
+            } catch (err) {
+                console.error('Failed to create group:', err);
+            }
         }
     };
 
     const handleChatSelect = (chat) => {
-        setSelectedChat(chat);
+        dispatch(setSelectedChat(chat));
         if (onMobile) {
             setShowChat(true);
         }
@@ -231,7 +227,7 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
                                 <div className="mt-3 md:mt-4 flex flex-wrap gap-2">
                                     {selectedUsers.map(user => (
                                         <div
-                                            key={user.id}
+                                            key={user._id}
                                             className="bg-[#56B9FE] text-white px-2.5 md:px-3 py-1 rounded-full text-xs md:text-sm flex items-center gap-1.5 md:gap-2"
                                         >
                                             <span>{user.name}</span>
@@ -256,25 +252,24 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
                             ) : (
                                 filteredUsers.map((user) => (
                                     <div
-                                        key={user.id}
+                                        key={user._id}
                                         onClick={() => {
                                             if (modalType === 'chat') {
-                                                setSelectedUsers([user]);
-                                                handleCreateChat();
+                                                handleCreateChat(user);
                                             } else {
                                                 toggleUserSelection(user);
                                             }
                                         }}
-                                        className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 rounded-xl cursor-pointer transition-all hover:bg-[#111b21] ${selectedUsers.find(u => u.id === user.id) ? 'bg-[#111b21] border-2 border-[#56B9FE]' : ''
+                                        className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 rounded-xl cursor-pointer transition-all hover:bg-[#111b21] ${selectedUsers.find(u => u._id === user._id) ? 'bg-[#111b21] border-2 border-[#56B9FE]' : ''
                                             }`}
                                     >
                                         <div className="w-10 h-10 md:w-12 md:h-12 bg-[#6b7c85] rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 text-sm md:text-base">
-                                            {user.avatar}
+                                            {user.name?.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-[#e9edef] font-medium text-sm md:text-base truncate">{user.name}</h4>
                                         </div>
-                                        {modalType === 'group' && selectedUsers.find(u => u.id === user.id) && (
+                                        {modalType === 'group' && selectedUsers.find(u => u._id === user._id) && (
                                             <i className="ri-checkbox-circle-fill text-[#56B9FE] text-xl md:text-2xl flex-shrink-0"></i>
                                         )}
                                     </div>
@@ -302,7 +297,11 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
 
             {/* Chats List */}
             <div className="flex-1 overflow-y-auto px-2 md:px-3 py-2 bg-[#111b21]">
-                {filteredChats.length === 0 ? (
+                {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <div className="text-[#8696a0]">Loading...</div>
+                    </div>
+                ) : filteredChats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-[#8696a0]">
                         <div className="bg-[#202c33] rounded-full p-4 md:p-6 mb-3 md:mb-4">
                             <i className="ri-message-3-line text-4xl md:text-5xl"></i>
@@ -313,44 +312,40 @@ export default function Sidebar({ selectedChat, setSelectedChat, onMobile, setSh
                 ) : (
                     filteredChats.map((chat) => (
                         <div
-                            key={chat.id}
+                            key={chat._id}
                             onClick={() => handleChatSelect(chat)}
-                            className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 my-1 cursor-pointer rounded-xl md:rounded-2xl transition-all duration-200 hover:bg-[#202c33] group ${selectedChat?.id === chat.id
-                                ? "bg-[#202c33]"
-                                : ""
+                            className={`flex items-center gap-3 md:gap-4 px-3 md:px-4 py-2.5 md:py-3 my-1 cursor-pointer rounded-xl md:rounded-2xl transition-all duration-200 hover:bg-[#202c33] group ${selectedChat?._id === chat._id ? "bg-[#202c33]" : ""
                                 }`}
                         >
                             <div className="relative">
-                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg transition-all duration-200 group-hover:scale-105 ${chat.type === "group"
-                                    ? "bg-[#56B9FE]"
-                                    : "bg-[#6b7c85]"
+                                <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center text-white font-bold flex-shrink-0 shadow-lg transition-all duration-200 group-hover:scale-105 ${chat.isGroupChat ? "bg-[#56B9FE]" : "bg-[#6b7c85]"
                                     }`}>
-                                    {chat.type === "group" ? (
+                                    {chat.isGroupChat ? (
                                         <i className="ri-group-line text-xl md:text-2xl"></i>
                                     ) : (
-                                        <span className="text-base md:text-lg">{chat.avatar}</span>
+                                        <span className="text-base md:text-lg">{getChatInitial(chat)}</span>
                                     )}
                                 </div>
-                                {chat.unread > 0 && (
-                                    <div className="absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 bg-[#56B9FE] rounded-full flex items-center justify-center text-white text-[10px] md:text-xs font-bold border-2 border-[#111b21] shadow-lg">
-                                        {chat.unread}
-                                    </div>
-                                )}
                             </div>
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-start mb-0.5 md:mb-1">
-                                    <h3 className={`font-semibold truncate text-sm md:text-base transition-colors ${selectedChat?.id === chat.id ? "text-[#e9edef]" : "text-[#e9edef] group-hover:text-white"
+                                    <h3 className={`font-semibold truncate text-sm md:text-base transition-colors ${selectedChat?._id === chat._id ? "text-[#e9edef]" : "text-[#e9edef] group-hover:text-white"
                                         }`}>
-                                        {chat.name}
+                                        {getChatName(chat)}
                                     </h3>
                                     <span className="text-[10px] md:text-xs text-[#8696a0] flex-shrink-0 ml-2 font-medium">
-                                        {chat.time}
+                                        {chat.lastMessage?.createdAt
+                                            ? new Date(chat.lastMessage.createdAt).toLocaleTimeString([], {
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })
+                                            : ''
+                                        }
                                     </span>
                                 </div>
-                                <p className={`text-xs md:text-sm truncate transition-colors ${chat.unread > 0 ? "text-[#d1d7db] font-medium" : "text-[#8696a0]"
-                                    }`}>
-                                    {chat.lastMessage}
+                                <p className="text-xs md:text-sm truncate text-[#8696a0]">
+                                    {getLastMessagePreview(chat)}
                                 </p>
                             </div>
                         </div>

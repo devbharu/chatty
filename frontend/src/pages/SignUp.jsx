@@ -1,6 +1,12 @@
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { signup } from "../slices/authSlice"; // adjust path as needed
+import { useNavigate } from "react-router-dom";
 
 export default function SignUp() {
+    const dispatch = useDispatch();
+    const { loading, error } = useSelector((state) => state.auth);
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -8,9 +14,26 @@ export default function SignUp() {
         terms: false
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Form submitted:", formData);
+
+        if (!formData.terms) {
+            alert("Please accept the terms and conditions");
+            return;
+        }
+
+        try {
+            await dispatch(signup({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password
+            })).unwrap();
+            // Redirect or show success message
+            navigate("/login")
+        } catch (err) {
+            // Error is already in Redux state
+            console.error("Signup failed:", err);
+        }
     };
 
     const handleChange = (e) => {
@@ -41,6 +64,13 @@ export default function SignUp() {
                     <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-3xl p-8 shadow-2xl">
                         <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
 
+                        {/* Error Display */}
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                                <p className="text-red-400 text-sm">{error}</p>
+                            </div>
+                        )}
+
                         <div className="space-y-5">
                             {/* Name Input */}
                             <div>
@@ -59,7 +89,8 @@ export default function SignUp() {
                                         value={formData.name}
                                         onChange={handleChange}
                                         placeholder="John Doe"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all"
+                                        disabled={loading}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -81,7 +112,8 @@ export default function SignUp() {
                                         value={formData.email}
                                         onChange={handleChange}
                                         placeholder="john@example.com"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all"
+                                        disabled={loading}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -103,7 +135,8 @@ export default function SignUp() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="••••••••"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all"
+                                        disabled={loading}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -116,6 +149,7 @@ export default function SignUp() {
                                     name="terms"
                                     checked={formData.terms}
                                     onChange={handleChange}
+                                    disabled={loading}
                                     className="w-4 h-4 mt-1 accent-[#57B9FF] bg-black border-gray-700"
                                 />
                                 <label htmlFor="terms" className="ml-3 text-sm text-gray-400">
@@ -133,9 +167,10 @@ export default function SignUp() {
                             {/* Submit Button */}
                             <button
                                 onClick={handleSubmit}
-                                className="w-full py-3.5 bg-[#57B9FF] text-black font-bold rounded-xl hover:bg-[#3da5f5] transition-all shadow-lg hover:shadow-[#57B9FF]/50 mt-2"
+                                disabled={loading}
+                                className="w-full py-3.5 bg-[#57B9FF] text-black font-bold rounded-xl hover:bg-[#3da5f5] transition-all shadow-lg hover:shadow-[#57B9FF]/50 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Create Account
+                                {loading ? "Creating Account..." : "Create Account"}
                             </button>
                         </div>
                     </div>

@@ -1,49 +1,86 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchChats } from "../slices/chatSlice";
+import { fetchUsers, fetchMe } from "../slices/userSlice";
 import Sidebar from "../components/Sidebar";
 import ChatWindow from "../components/ChatWindow";
 
-
 export default function Home() {
-    const [selectedChat, setSelectedChat] = useState(null);
+    const dispatch = useDispatch();
     const [showChat, setShowChat] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    // Detect mobile screen size
+    const { selectedChat } = useSelector((state) => state.chats);
+    const { currentUser } = useSelector((state) => state.users);
+
+    // Fetch initial data on mount
     useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
+        const fetchInitialData = async () => {
+            try {
+                // Fetch current user first, then fetch users and chats in parallel
+                await dispatch(fetchMe()).unwrap();
+                await Promise.all([
+                    dispatch(fetchChats()).unwrap(),
+                    dispatch(fetchUsers()).unwrap()
+                ]);
+            } catch (error) {
+                console.error('Failed to fetch initial data:', error);
+            }
         };
 
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
+        fetchInitialData();
+    }, [dispatch]);
 
-        return () => window.removeEventListener('resize', checkMobile);
+    // Detect mobile screen size with debouncing
+    useEffect(() => {
+        let timeoutId;
+
+        const checkMobile = () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+                setIsMobile(window.innerWidth < 768);
+            }, 150);
+        };
+
+        window.addEventListener('resize', checkMobile);
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', checkMobile);
+        };
     }, []);
 
-    const handleBackToChats = () => {
+    // Auto-show chat on mobile when a chat is selected
+    useEffect(() => {
+        if (isMobile && selectedChat) {
+            setShowChat(true);
+        }
+    }, [isMobile, selectedChat]);
+
+    const handleBackToChats = useCallback(() => {
         setShowChat(false);
-    };
+    }, []);
 
     return (
-        <div className="flex h-screen overflow-hidden">
-            {/* Sidebar - Hide on mobile when chat is open */}
-            <div className={`${isMobile && showChat ? 'hidden' : 'flex'} ${isMobile ? 'w-full' : ''}`}>
-                <Sidebar
-                    selectedChat={selectedChat}
-                    setSelectedChat={setSelectedChat}
-                    onMobile={isMobile}
-                    setShowChat={setShowChat}
-                />
-            </div>
+        <div className="flex h-screen overflow-hidden bg-[#111b21]">
+            {/* Sidebar */}
+            {(!isMobile || !showChat) && (
+                <div className={isMobile ? 'w-full' : 'w-auto'}>
+                    <Sidebar
+                        onMobile={isMobile}
+                        setShowChat={setShowChat}
+                    />
+                </div>
+            )}
 
-            {/* Chat Window - Show based on screen size and selection */}
-            <div className={`${isMobile ? (showChat ? 'flex w-full' : 'hidden') : 'flex flex-1'}`}>
-                <ChatWindow
-                    chat={selectedChat}
-                    onMobile={isMobile}
-                    onBack={handleBackToChats}
-                />
-            </div>
+            {/* Chat Window */}
+            {(!isMobile || showChat) && (
+                <div className={isMobile ? 'w-full' : 'flex-1'}>
+                    <ChatWindow
+                        onMobile={isMobile}
+                        onBack={handleBackToChats}
+                    />
+                </div>
+            )}
         </div>
     );
 }

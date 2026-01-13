@@ -1,14 +1,30 @@
 import { useState } from "react";
-
+import { useDispatch, useSelector } from "react-redux";
+import { login } from "../slices/authSlice"; // adjust path as needed
+import { useNavigate } from "react-router-dom";
 export default function Login() {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+    const { loading, error } = useSelector((state) => state.auth);
+
     const [formData, setFormData] = useState({
         email: "",
         password: ""
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log("Form submitted:", formData);
+
+        try {
+            await dispatch(login({
+                email: formData.email,
+                password: formData.password
+            })).unwrap();
+            // Redirect or show success message
+            navigate("/home")
+        } catch (err) {
+            console.error("Login failed:", err);
+        }
     };
 
     const handleChange = (e) => {
@@ -39,6 +55,13 @@ export default function Login() {
                     <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-3xl p-8 shadow-2xl">
                         <h2 className="text-2xl font-bold text-white mb-6">Sign In</h2>
 
+                        {/* Error Display */}
+                        {error && (
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg">
+                                <p className="text-red-400 text-sm">{error}</p>
+                            </div>
+                        )}
+
                         <div className="space-y-5">
                             {/* Email Input */}
                             <div>
@@ -57,7 +80,8 @@ export default function Login() {
                                         value={formData.email}
                                         onChange={handleChange}
                                         placeholder="john@example.com"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all"
+                                        disabled={loading}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -79,7 +103,8 @@ export default function Login() {
                                         value={formData.password}
                                         onChange={handleChange}
                                         placeholder="••••••••"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all"
+                                        disabled={loading}
+                                        className="w-full pl-12 pr-4 py-3.5 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#57B9FF] focus:ring-1 focus:ring-[#57B9FF] transition-all disabled:opacity-50"
                                     />
                                 </div>
                             </div>
@@ -94,9 +119,10 @@ export default function Login() {
                             {/* Submit Button */}
                             <button
                                 onClick={handleSubmit}
-                                className="w-full py-3.5 bg-[#57B9FF] text-black font-bold rounded-xl hover:bg-[#3da5f5] transition-all shadow-lg hover:shadow-[#57B9FF]/50"
+                                disabled={loading}
+                                className="w-full py-3.5 bg-[#57B9FF] text-black font-bold rounded-xl hover:bg-[#3da5f5] transition-all shadow-lg hover:shadow-[#57B9FF]/50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Sign In
+                                {loading ? "Signing In..." : "Sign In"}
                             </button>
                         </div>
                     </div>
